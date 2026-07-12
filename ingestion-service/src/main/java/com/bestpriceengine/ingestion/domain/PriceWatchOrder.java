@@ -36,11 +36,17 @@ public class PriceWatchOrder {
     private Instant createdAt;
     private Instant expiresAt;
 
+    // Denormalized copy (same pattern as Order.userId/username) -- the watch's CREATOR, so a
+    // later price update that triggers the fill still attributes correctly to the person who
+    // placed the watch, not whoever's request happened to bump the price.
+    private Long userId;
+    private String username;
+
     protected PriceWatchOrder() {
     }
 
     public PriceWatchOrder(Offer offer, int quantity, double maxAcceptablePrice,
-                            FulfillmentMode fulfillmentMode, int expiresAfterSeconds) {
+                            FulfillmentMode fulfillmentMode, int expiresAfterSeconds, Long userId, String username) {
         this.offerId = offer.getId();
         this.retailer = offer.getRetailer();
         this.productName = offer.getProductName();
@@ -50,6 +56,8 @@ public class PriceWatchOrder {
         this.status = PriceWatchOrderStatus.PENDING;
         this.createdAt = Instant.now();
         this.expiresAt = this.createdAt.plusSeconds(expiresAfterSeconds);
+        this.userId = userId;
+        this.username = username;
     }
 
     public boolean qualifiesAt(double currentUnitPrice) {
@@ -80,4 +88,6 @@ public class PriceWatchOrder {
     public Long getResultingOrderId() { return resultingOrderId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getExpiresAt() { return expiresAt; }
+    public Long getUserId() { return userId; }
+    public String getUsername() { return username; }
 }

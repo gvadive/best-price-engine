@@ -39,6 +39,11 @@ public class CatalogService {
         return offerRepository.findByProductName(productName);
     }
 
+    /** Powers search-as-you-type: distinct product names containing the query, case-insensitive. */
+    public List<String> searchProductNames(String query) {
+        return offerRepository.findDistinctProductNamesMatching(query == null ? "" : query);
+    }
+
     // Simulates the retailer's own price feed changing. Bumps priceVersion
     // (a manually-managed counter, only incremented here) so any order
     // already quoted at the old version is rejected instead of silently

@@ -12,7 +12,8 @@ public record PriceWatchOrderDto(
         String fulfillmentMode,
         String status,
         Long resultingOrderId,
-        String expiresAt
+        String expiresAt,
+        String username
 ) {
     public static PriceWatchOrderDto from(PriceWatchOrder watch) {
         return new PriceWatchOrderDto(
@@ -25,7 +26,8 @@ public record PriceWatchOrderDto(
                 watch.getFulfillmentMode().name(),
                 watch.getStatus().name(),
                 watch.getResultingOrderId(),
-                watch.getExpiresAt().toString()
+                watch.getExpiresAt().toString(),
+                watch.getUsername()
         );
     }
 }

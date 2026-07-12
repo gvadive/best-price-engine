@@ -14,24 +14,26 @@ SSH_KEY="${SSH_KEY:-/tmp/best-price-engine-ci.pem}"
 KEEP=0
 [ "${1:-}" = "--keep" ] && KEEP=1
 
+# Images are built once in CI and pulled here -- no on-box Gradle compilation,
+# so no swap file / buildx / COMPOSE_PARALLEL_LIMIT workaround is needed
+# anymore (those existed solely to survive two Gradle daemons fighting over
+# 1GiB of RAM). Defaults let a manual dry run (`bash deploy-ci-smoketest.sh`)
+# still work against the images already pushed to ghcr.io.
+GHCR_OWNER="${GHCR_OWNER:-gvadive}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
+GHCR_USER="${GHCR_USER:-$GHCR_OWNER}"
+GHCR_TOKEN="${GHCR_TOKEN:-}"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 USER_DATA=$(cat <<'EOF'
 #!/bin/bash
-fallocate -l 2G /swapfile
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo '/swapfile none swap sw 0 0' >> /etc/fstab
 dnf install -y docker
 systemctl enable --now docker
 mkdir -p /usr/local/lib/docker/cli-plugins
 curl -sSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-curl -sSL https://github.com/docker/buildx/releases/download/v0.19.3/buildx-v0.19.3.linux-amd64 \
-  -o /usr/local/lib/docker/cli-plugins/docker-buildx
-chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 usermod -aG docker ec2-user
 EOF
 )
@@ -84,14 +86,24 @@ for i in $(seq 1 30); do
   sleep 10
 done
 
-echo "Copying repo to instance..."
-rsync -az --exclude '.git' --exclude '**/build' --exclude '**/node_modules' \
+echo "Copying compose files to instance..."
+# No Java source, no Gradle wrapper, no nginx.conf, no frontend source -- all
+# three images (ingestion, pricing, and now the React frontend baked into
+# nginx) are pulled from ghcr.io fully built, so only the two compose files
+# that describe which images/ports to use need to travel.
+ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "ec2-user@$PUBLIC_IP" "mkdir -p best-price-engine"
+rsync -az \
   -e "ssh -o StrictHostKeyChecking=no -i $SSH_KEY" \
-  "$REPO_ROOT/" "ec2-user@$PUBLIC_IP:/home/ec2-user/best-price-engine/"
+  "$REPO_ROOT/docker-compose.yml" "$REPO_ROOT/docker-compose.ci.yml" \
+  "ec2-user@$PUBLIC_IP:/home/ec2-user/best-price-engine/"
 
-echo "Building and starting the stack..."
+echo "Pulling images from ghcr.io and starting the stack..."
+if [ -n "$GHCR_TOKEN" ]; then
+  ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "ec2-user@$PUBLIC_IP" \
+    "echo '$GHCR_TOKEN' | sudo docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+fi
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "ec2-user@$PUBLIC_IP" \
-  "cd best-price-engine && COMPOSE_PARALLEL_LIMIT=1 sudo -E docker compose build ingestion-service pricing-engine-1 pricing-engine-2 && sudo docker compose up -d ingestion-service pricing-engine-1 pricing-engine-2 nginx"
+  "cd best-price-engine && sudo GHCR_OWNER='$GHCR_OWNER' IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.yml -f docker-compose.ci.yml pull ingestion-service pricing-engine-1 pricing-engine-2 nginx && sudo GHCR_OWNER='$GHCR_OWNER' IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d ingestion-service pricing-engine-1 pricing-engine-2 nginx"
 
 echo "Waiting for the stack to become reachable..."
 # NOTE: must poll through nginx (8080) — the security group only opens 22/8080

@@ -39,6 +39,14 @@ public class CatalogController {
                 .toList();
     }
 
+    // Search-as-you-type: distinct product names matching a partial, case-insensitive
+    // query. Deliberately separate from /offers (which stays an exact match) so existing
+    // exact-match callers/tests are unaffected.
+    @GetMapping("/products")
+    public List<String> searchProducts(@RequestParam(defaultValue = "") String query) {
+        return catalogService.searchProductNames(query);
+    }
+
     // Simulation endpoint standing in for a retailer's live price feed --
     // updates the price and bumps priceVersion, which is what makes stale
     // order quotes detectable.

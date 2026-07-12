@@ -1,0 +1,24 @@
+# Override for the ephemeral EC2 CI smoke-test: pulls pre-built images from
+# ghcr.io instead of compiling Gradle on-box. `docker compose -f docker-compose.yml
+# -f docker-compose.ci.yml` merges this in -- `image:` here takes precedence over
+# the base file's `build:`, so `docker compose pull` fetches these instead of
+# building, and `up -d` (without --build) never touches Gradle at all.
+#
+# Why this exists: the t3.micro CI instance has 1GiB RAM. Building two Spring
+# services' Gradle daemons on-box in parallel caused real memory contention
+# (see infra/aws/ - swap file + COMPOSE_PARALLEL_LIMIT=1 were the workaround).
+# Building once on the GitHub Actions runner (which has real RAM) and pulling
+# a finished JRE-only image removes the problem at the source instead of
+# working around it on a resource-starved box.
+services:
+  ingestion-service:
+    image: ghcr.io/${GHCR_OWNER:-gvadive}/best-price-engine-ingestion:${IMAGE_TAG:-latest}
+
+  pricing-engine-1:
+    image: ghcr.io/${GHCR_OWNER:-gvadive}/best-price-engine-pricing:${IMAGE_TAG:-latest}
+
+  pricing-engine-2:
+    image: ghcr.io/${GHCR_OWNER:-gvadive}/best-price-engine-pricing:${IMAGE_TAG:-latest}
+
+  nginx:
+    image: ghcr.io/${GHCR_OWNER:-gvadive}/best-price-engine-frontend:${IMAGE_TAG:-latest}

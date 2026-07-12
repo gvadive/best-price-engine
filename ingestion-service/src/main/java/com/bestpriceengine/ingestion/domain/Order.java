@@ -35,11 +35,16 @@ public class Order {
     private String rejectReason;
     private Instant createdAt;
 
+    // Denormalized copy, same pattern as retailer/productName above -- not a JPA
+    // relationship to User, consistent with how this entity already avoids joins.
+    private Long userId;
+    private String username;
+
     protected Order() {
     }
 
     private Order(Offer offer, int requestedQuantity, long quotedPriceVersion, int filledQuantity,
-                   double unitPrice, OrderStatus status, String rejectReason) {
+                   double unitPrice, OrderStatus status, String rejectReason, Long userId, String username) {
         this.offerId = offer.getId();
         this.retailer = offer.getRetailer();
         this.productName = offer.getProductName();
@@ -52,31 +57,33 @@ public class Order {
         this.status = status;
         this.rejectReason = rejectReason;
         this.createdAt = Instant.now();
+        this.userId = userId;
+        this.username = username;
     }
 
-    public static Order rejectedForStalePrice(Offer offer, int requestedQuantity, long quotedPriceVersion) {
+    public static Order rejectedForStalePrice(Offer offer, int requestedQuantity, long quotedPriceVersion, Long userId, String username) {
         String reason = "price changed since quote (quoted v%d, current v%d)"
                 .formatted(quotedPriceVersion, offer.getPriceVersion());
-        return new Order(offer, requestedQuantity, quotedPriceVersion, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason);
+        return new Order(offer, requestedQuantity, quotedPriceVersion, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason, userId, username);
     }
 
-    public static Order rejectedForInsufficientStock(Offer offer, int requestedQuantity, long quotedPriceVersion) {
+    public static Order rejectedForInsufficientStock(Offer offer, int requestedQuantity, long quotedPriceVersion, Long userId, String username) {
         String reason = "only %d available, exact-quantity order requires %d"
                 .formatted(offer.getAvailableQuantity(), requestedQuantity);
-        return new Order(offer, requestedQuantity, quotedPriceVersion, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason);
+        return new Order(offer, requestedQuantity, quotedPriceVersion, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason, userId, username);
     }
 
-    public static Order rejectedForInvalidQuote(Offer offer, int requestedQuantity, String reason) {
-        return new Order(offer, requestedQuantity, 0, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason);
+    public static Order rejectedForInvalidQuote(Offer offer, int requestedQuantity, String reason, Long userId, String username) {
+        return new Order(offer, requestedQuantity, 0, 0, offer.getBasePrice(), OrderStatus.REJECTED, reason, userId, username);
     }
 
-    public static Order filled(Offer offer, int requestedQuantity, long quotedPriceVersion, int filledQuantity) {
+    public static Order filled(Offer offer, int requestedQuantity, long quotedPriceVersion, int filledQuantity, Long userId, String username) {
         double unitPrice = offer.unitPriceAt(filledQuantity > 0 ? filledQuantity : requestedQuantity);
-        return filledAt(offer, requestedQuantity, quotedPriceVersion, filledQuantity, unitPrice);
+        return filledAt(offer, requestedQuantity, quotedPriceVersion, filledQuantity, unitPrice, userId, username);
     }
 
     /** Same fulfillment logic as {@link #filled}, but at an explicitly agreed price (e.g. a negotiated bulk pricing request). */
-    public static Order filledAt(Offer offer, int requestedQuantity, long quotedPriceVersion, int filledQuantity, double unitPrice) {
+    public static Order filledAt(Offer offer, int requestedQuantity, long quotedPriceVersion, int filledQuantity, double unitPrice, Long userId, String username) {
         OrderStatus status;
         String reason;
         if (filledQuantity == requestedQuantity) {
@@ -89,7 +96,7 @@ public class Order {
             status = OrderStatus.PARTIALLY_FILLED;
             reason = "only %d of %d requested were available; remainder canceled".formatted(filledQuantity, requestedQuantity);
         }
-        return new Order(offer, requestedQuantity, quotedPriceVersion, filledQuantity, unitPrice, status, reason);
+        return new Order(offer, requestedQuantity, quotedPriceVersion, filledQuantity, unitPrice, status, reason, userId, username);
     }
 
     public Long getId() { return id; }
@@ -105,4 +112,6 @@ public class Order {
     public OrderStatus getStatus() { return status; }
     public String getRejectReason() { return rejectReason; }
     public Instant getCreatedAt() { return createdAt; }
+    public Long getUserId() { return userId; }
+    public String getUsername() { return username; }
 }

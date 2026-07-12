@@ -2,6 +2,7 @@ import os
 import socket
 import subprocess
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -71,6 +72,20 @@ def ingestion_process():
     if proc.poll() is None:
         proc.kill()
         proc.wait()
+
+
+@pytest.fixture
+def auth_session(ingestion_process):
+    """A requests.Session authenticated as a freshly-registered, uniquely-named user --
+    placing orders / price watch orders now requires auth, so tests that exercise those
+    endpoints need a logged-in session rather than the bare `requests` module."""
+    session = requests.Session()
+    username = f"testuser-{uuid.uuid4().hex[:8]}"
+    password = "testpass123"
+    session.post(f"{INGESTION_URL}/api/auth/register", json={"username": username, "password": password})
+    session.post(f"{INGESTION_URL}/api/auth/login", json={"username": username, "password": password})
+    session.username = username
+    return session
 
 
 @pytest.fixture(scope="session")

@@ -12,7 +12,9 @@ public record OrderResultDto(
         double unitPrice,
         double filledTotal,
         String status,
-        String rejectReason
+        String rejectReason,
+        String username,
+        String createdAt
 ) {
     public static OrderResultDto from(Order order) {
         return new OrderResultDto(
@@ -25,7 +27,9 @@ public record OrderResultDto(
                 order.getUnitPrice(),
                 Math.round(order.getUnitPrice() * order.getFilledQuantity() * 100.0) / 100.0,
                 order.getStatus().name(),
-                order.getRejectReason()
+                order.getRejectReason(),
+                order.getUsername(),
+                order.getCreatedAt().toString()
         );
     }
 }

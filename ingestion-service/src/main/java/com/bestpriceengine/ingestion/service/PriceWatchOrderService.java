@@ -29,11 +29,11 @@ public class PriceWatchOrderService {
 
     @Transactional
     public PriceWatchOrder placeWatch(Long offerId, int quantity, double maxAcceptablePrice,
-                                       FulfillmentMode fulfillmentMode, int expiresAfterSeconds) {
+                                       FulfillmentMode fulfillmentMode, int expiresAfterSeconds, Long userId, String username) {
         Offer offer = offerRepository.findById(offerId)
                 .orElseThrow(() -> new NoSuchElementException("no offer with id " + offerId));
 
-        PriceWatchOrder watch = new PriceWatchOrder(offer, quantity, maxAcceptablePrice, fulfillmentMode, expiresAfterSeconds);
+        PriceWatchOrder watch = new PriceWatchOrder(offer, quantity, maxAcceptablePrice, fulfillmentMode, expiresAfterSeconds, userId, username);
         priceWatchOrderRepository.save(watch);
 
         tryFill(watch, offer);
@@ -55,7 +55,8 @@ public class PriceWatchOrderService {
         }
         double currentUnitPrice = offer.unitPriceAt(watch.getQuantity());
         if (watch.qualifiesAt(currentUnitPrice)) {
-            Order order = orderService.fulfillAtLivePrice(offer, watch.getQuantity(), watch.getFulfillmentMode());
+            Order order = orderService.fulfillAtLivePrice(offer, watch.getQuantity(), watch.getFulfillmentMode(),
+                    watch.getUserId(), watch.getUsername());
             if (order.getFilledQuantity() > 0) {
                 watch.markFilled(order.getId());
                 priceWatchOrderRepository.save(watch);

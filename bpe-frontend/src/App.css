@@ -1,0 +1,318 @@
+/* ---------- Layout ---------- */
+
+.app-loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--text);
+}
+
+main {
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subtitle {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+/* ---------- Navbar ---------- */
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.nav-link.active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.navbar-username {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+/* ---------- Forms (compare + action panel) ---------- */
+
+#compare-form, .auth-card, #action-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+#compare-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+#compare-form label,
+#action-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+#compare-form input,
+#compare-form select,
+#action-panel input,
+#action-panel select,
+.auth-card input {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+#compare-form button[type="submit"],
+#action-panel button:not(#submit-order-from-bulk[hidden]),
+.auth-card button[type="submit"] {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  height: fit-content;
+}
+
+#compare-form button[type="submit"]:hover,
+.auth-card button[type="submit"]:hover {
+  background: var(--accent-hover);
+}
+
+/* ---------- Results table ---------- */
+
+#status {
+  color: var(--text);
+  font-weight: 500;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+th {
+  background: var(--bg);
+  color: var(--text-h);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr.cheapest {
+  background: var(--success-bg);
+}
+
+tr.cheapest td:first-child::before {
+  content: "\2605 ";
+  color: var(--success);
+}
+
+td.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+td.actions button {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+td.actions button:hover {
+  background: var(--accent-bg);
+}
+
+/* ---------- Action panel ---------- */
+
+#action-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#order-fields, #bulk-fields, #watch-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+}
+
+#action-result, #bulk-result {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* ---------- Auth ---------- */
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding-top: 60px;
+}
+
+.auth-card {
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-error {
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.form-success {
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.auth-switch {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 600;
+  padding: 0;
+}
+
+/* ---------- Order history ---------- */
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Row background gets a faint tint; only the badge itself gets the full
+   status color -- these must stay scoped to .status-badge, otherwise the
+   row-level status-* class recolors every cell's text, not just the badge. */
+tr.status-accepted {
+  background: var(--success-bg);
+}
+
+tr.status-partially_filled {
+  background: var(--warning-bg);
+}
+
+tr.status-rejected {
+  background: var(--danger-bg);
+}
+
+.status-badge.status-accepted {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+}
+
+.status-badge.status-partially_filled {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+}
+
+.status-badge.status-rejected {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+}
+
+.reject-reason {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
+  margin-top: 2px;
+}

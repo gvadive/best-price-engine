@@ -28,13 +28,16 @@ services:
     depends_on:
       - ingestion-service
 
+  # React (Vite) frontend, built and baked into the nginx image itself
+  # (Node build stage -> nginx serve stage) rather than volume-mounted --
+  # nginx.conf is COPYed in at build time too, so this image is fully
+  # self-contained and pushable to a registry like the two Spring services.
   nginx:
-    image: nginx:1.27-alpine
+    build:
+      context: .
+      dockerfile: bpe-frontend/Dockerfile
     ports:
       - "8080:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./frontend:/usr/share/nginx/html:ro
     depends_on:
       - pricing-engine-1
       - pricing-engine-2

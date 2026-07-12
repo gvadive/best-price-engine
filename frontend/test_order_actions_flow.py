@@ -33,7 +33,25 @@ def _seed_offer(**overrides):
     return product
 
 
+def _register_and_authenticate(page: Page):
+    """Placing orders/watches now requires auth. There's no login UI yet (that lands with
+    the React rewrite), so -- same pattern as _seed_offer bypassing the UI for setup --
+    register+login via a direct API call, then hand the resulting session cookie to the
+    browser context. Cookies are host-scoped, not port-scoped, so a JSESSIONID obtained by
+    talking to ingestion-service directly on :8081 is presented by the browser on :8080 too
+    (same "localhost" host, and nginx proxies to the same backend session store anyway)."""
+    username = f"e2e-user-{uuid.uuid4().hex[:8]}"
+    password = "e2epass123"
+    session = requests.Session()
+    session.post(f"{INGESTION_URL}/api/auth/register", json={"username": username, "password": password})
+    session.post(f"{INGESTION_URL}/api/auth/login", json={"username": username, "password": password})
+    jsessionid = session.cookies.get("JSESSIONID")
+    page.context.add_cookies([{"name": "JSESSIONID", "value": jsessionid, "domain": "localhost", "path": "/"}])
+    return username
+
+
 def _search(page: Page, product: str, quantity: int = 1):
+    _register_and_authenticate(page)
     page.goto(APP_URL)
     page.fill("#product", product)
     page.fill("#quantity", str(quantity))

@@ -45,7 +45,7 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker compose build ingestion-service pricing-engine-1 pricing-engine-2
+          docker compose build ingestion-service pricing-engine-1 pricing-engine-2 nginx
 
       - name: Start the real stack (nginx + load-balanced services)
         run: docker compose up -d ingestion-service pricing-engine-1 pricing-engine-2 nginx
@@ -78,8 +78,62 @@ jobs:
         if: always()
         run: docker compose down -v
 
-  ec2-smoketest:
+  # Builds both Spring images once, here, on the GitHub Actions runner (real RAM,
+  # not the ephemeral t3.micro), and pushes to ghcr.io. ghcr.io is deliberate over
+  # AWS ECR: GitHub Actions' own GITHUB_TOKEN already has registry-push rights for
+  # packages owned by this repo, so this needs zero new AWS IAM permission --
+  # avoiding the self-escalation/Console-step friction that recurred repeatedly
+  # when adding the original EC2-hosting IAM policy.
+  build-and-push:
     needs: build-test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ingestion-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ingestion-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-ingestion:latest
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-ingestion:${{ github.sha }}
+
+      - name: Build and push pricing-engine-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: pricing-engine-service/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-pricing:latest
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-pricing:${{ github.sha }}
+
+      - name: Build and push frontend (React build -> nginx serve)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: bpe-frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-frontend:latest
+            ghcr.io/${{ github.repository_owner }}/best-price-engine-frontend:${{ github.sha }}
+
+  ec2-smoketest:
+    needs: build-and-push
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
@@ -98,4 +152,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          GHCR_OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ github.sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
         run: bash infra/aws/deploy-ci-smoketest.sh
