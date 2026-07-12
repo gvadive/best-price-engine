@@ -77,3 +77,25 @@ jobs:
       - name: Tear down the stack
         if: always()
         run: docker compose down -v
+
+  ec2-smoketest:
+    needs: build-test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write SSH private key
+        run: |
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/best-price-engine-ci.pem
+          chmod 600 /tmp/best-price-engine-ci.pem
+
+      - name: Ensure rsync is available
+        run: sudo apt-get update && sudo apt-get install -y rsync
+
+      - name: Launch ephemeral EC2 instance, deploy, smoke-test, tear down
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: bash infra/aws/deploy-ci-smoketest.sh
