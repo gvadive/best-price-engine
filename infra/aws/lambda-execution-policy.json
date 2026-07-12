@@ -1,0 +1,29 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Logs",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:*:*:log-group:/aws/lambda/best-price-engine-*"
+    },
+    {
+      "Sid": "ReadCatalogBucket",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::best-price-engine-*/*"
+    },
+    {
+      "Sid": "WriteCatalogTable",
+      "Effect": "Allow",
+      "Action": "dynamodb:PutItem",
+      "Resource": "arn:aws:dynamodb:*:*:table/best-price-engine-*"
+    },
+    {
+      "Sid": "StartPipeline",
+      "Effect": "Allow",
+      "Action": "states:StartExecution",
+      "Resource": "arn:aws:states:*:*:stateMachine:best-price-engine-*"
+    }
+  ]
+}

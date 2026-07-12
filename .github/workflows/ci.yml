@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build both Spring services
+        run: ./gradlew build -x test
+
+      - name: Install Python test dependencies
+        run: pip install pytest pytest-playwright requests
+
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
+      - name: Run BestOfferSelector unit tests
+        run: |
+          cd ingestion-service/lambda
+          pytest -v
+
+      - name: Run API + resiliency tests (starts both services itself)
+        run: |
+          cd tests
+          pytest -v
+
+      - name: Run Playwright E2E (starts services + static frontend server)
+        run: |
+          (cd ingestion-service && java -jar build/libs/ingestion-service-0.1.0.jar &)
+          (cd pricing-engine-service && java -jar build/libs/pricing-engine-service-0.1.0.jar &)
+          (cd frontend && python3 -m http.server 5173 &)
+          sleep 15
+          cd frontend
+          pytest test_compare_flow.py -v --browser chromium
+
+      - name: Build Docker images
+        run: |
+          docker build -f ingestion-service/Dockerfile -t best-price-engine-ingestion-service .
+          docker build -f pricing-engine-service/Dockerfile -t best-price-engine-pricing-engine-service .

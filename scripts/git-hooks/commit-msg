@@ -1,0 +1,15 @@
+#!/bin/bash
+# commit-msg hook: every commit must reference a tracked GitHub issue
+# (e.g. "Refs #3" or "Closes #5"), same discipline as a Jira-ticket-prefix
+# convention, adapted to this project's own free/native tracker instead of
+# a separate paid tool. Enable with:
+#   git config core.hooksPath scripts/git-hooks
+
+MSG_FILE="$1"
+MSG="$(cat "$MSG_FILE")"
+
+if ! echo "$MSG" | grep -qE '#[0-9]+'; then
+  echo "BLOCKED: commit message must reference a GitHub issue, e.g. 'Refs #3' or 'Closes #5'."
+  echo "See open issues: gh issue list"
+  exit 1
+fi

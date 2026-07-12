@@ -1,0 +1,24 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: pricing-engine-service
+
+ingestion:
+  base-url: ${INGESTION_BASE_URL:http://localhost:8081}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      ingestionService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+  retry:
+    instances:
+      ingestionService:
+        max-attempts: 3
+        wait-duration: 200ms

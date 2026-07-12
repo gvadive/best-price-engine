@@ -1,0 +1,40 @@
+{
+  "Comment": "Catalog ingestion pipeline: validate an uploaded retailer catalog, then load it into DynamoDB",
+  "StartAt": "ValidateCatalog",
+  "States": {
+    "ValidateCatalog": {
+      "Type": "Task",
+      "Resource": "{{VALIDATE_LAMBDA_ARN}}",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "ValidationFailed"
+        }
+      ],
+      "Next": "LoadToDynamoDb"
+    },
+    "LoadToDynamoDb": {
+      "Type": "Task",
+      "Resource": "{{LOAD_LAMBDA_ARN}}",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "LoadFailed"
+        }
+      ],
+      "End": true
+    },
+    "ValidationFailed": {
+      "Type": "Fail",
+      "Error": "CatalogValidationError",
+      "Cause": "The uploaded catalog file failed shape validation"
+    },
+    "LoadFailed": {
+      "Type": "Fail",
+      "Error": "CatalogLoadError",
+      "Cause": "One or more offers failed to load into DynamoDB"
+    }
+  }
+}

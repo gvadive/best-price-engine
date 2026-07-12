@@ -1,0 +1,4 @@
+rootProject.name = 'best-price-engine'
+
+include 'ingestion-service'
+include 'pricing-engine-service'

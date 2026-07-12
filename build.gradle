@@ -1,0 +1,55 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.4' apply false
+    id 'io.spring.dependency-management' version '1.1.6' apply false
+}
+
+allprojects {
+    group = 'com.bestpriceengine'
+    version = '0.1.0'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+        }
+        repositories {
+            maven {
+                name = 'nexus'
+                url = 'http://localhost:8083/repository/maven-releases/'
+                credentials {
+                    username = System.getenv('NEXUS_USER') ?: 'admin'
+                    password = System.getenv('NEXUS_PASSWORD') ?: 'admin123'
+                }
+                allowInsecureProtocol = true
+            }
+        }
+    }
+
+    // Spring Boot's BOM manages dependency versions at build time rather than
+    // pinning them per-dependency -- expected for an app jar (not a reusable
+    // library jar), which trips this specific Gradle Module Metadata check.
+    tasks.withType(GenerateModuleMetadata).configureEach {
+        suppressedValidationErrors.add('dependencies-without-versions')
+    }
+}
