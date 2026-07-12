@@ -38,21 +38,32 @@ jobs:
           cd ingestion-service/lambda
           pytest -v
 
-      - name: Run API + resiliency tests (starts both services itself)
+      - name: Run API + resiliency tests (starts both services itself, isolated ports)
         run: |
           cd tests
           pytest -v
 
-      - name: Run Playwright E2E (starts services + static frontend server)
-        run: |
-          (cd ingestion-service && java -jar build/libs/ingestion-service-0.1.0.jar &)
-          (cd pricing-engine-service && java -jar build/libs/pricing-engine-service-0.1.0.jar &)
-          (cd frontend && python3 -m http.server 5173 &)
-          sleep 15
-          cd frontend
-          pytest test_compare_flow.py -v --browser chromium
-
       - name: Build Docker images
         run: |
-          docker build -f ingestion-service/Dockerfile -t best-price-engine-ingestion-service .
-          docker build -f pricing-engine-service/Dockerfile -t best-price-engine-pricing-engine-service .
+          docker compose build ingestion-service pricing-engine-1 pricing-engine-2
+
+      - name: Start the real stack (nginx + load-balanced services)
+        run: docker compose up -d ingestion-service pricing-engine-1 pricing-engine-2 nginx
+
+      - name: Wait for nginx to be reachable
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ || true)
+            [ "$code" = "200" ] && exit 0
+            sleep 2
+          done
+          echo "nginx never became reachable" && exit 1
+
+      - name: Run Playwright E2E (against the real nginx-fronted stack)
+        run: |
+          cd frontend
+          pytest test_compare_flow.py test_order_actions_flow.py -v --browser chromium
+
+      - name: Tear down the stack
+        if: always()
+        run: docker compose down -v
