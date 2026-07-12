@@ -50,14 +50,24 @@ jobs:
       - name: Start the real stack (nginx + load-balanced services)
         run: docker compose up -d ingestion-service pricing-engine-1 pricing-engine-2 nginx
 
-      - name: Wait for nginx to be reachable
+      - name: Wait for nginx and the backend services to be reachable
         run: |
-          for i in $(seq 1 30); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ || true)
-            [ "$code" = "200" ] && exit 0
-            sleep 2
-          done
-          echo "nginx never became reachable" && exit 1
+          wait_for() {
+            local url="$1" label="$2"
+            for i in $(seq 1 60); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
+              [ "$code" = "200" ] && echo "$label ready after ${i}s" && return 0
+              sleep 2
+            done
+            echo "$label never became reachable" && return 1
+          }
+          # Tests seed data by calling ingestion-service directly (bypassing
+          # nginx), so it must be genuinely ready, not just nginx itself --
+          # nginx serves the static frontend fine before its Java backend
+          # has finished booting, which was the actual cause of the last
+          # CI failure (502s / connection resets on the seeding calls).
+          wait_for "http://localhost:8081/api/offers?product=warmup" "ingestion-service" || exit 1
+          wait_for "http://localhost:8080/" "nginx" || exit 1
 
       - name: Run Playwright E2E (against the real nginx-fronted stack)
         run: |
