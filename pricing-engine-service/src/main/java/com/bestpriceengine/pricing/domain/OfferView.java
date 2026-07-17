@@ -14,6 +14,10 @@ public record OfferView(
         int availableQuantity,
         List<QuantityTierView> quantityTiers
 ) {
+    public OfferView {
+        quantityTiers = quantityTiers == null ? List.of() : quantityTiers;
+    }
+
     public double unitPriceAt(int quantity) {
         return quantityTiers.stream()
                 .filter(t -> quantity >= t.minQuantity())
