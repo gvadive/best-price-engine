@@ -24,6 +24,16 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install frontend dependencies
+        run: |
+          cd bpe-frontend
+          npm ci
+
       - name: Build both Spring services
         run: ./gradlew build -x test
 
@@ -67,7 +77,19 @@ jobs:
           # has finished booting, which was the actual cause of the last
           # CI failure (502s / connection resets on the seeding calls).
           wait_for "http://localhost:8081/api/offers?product=warmup" "ingestion-service" || exit 1
+          wait_for "http://localhost:8082/v3/api-docs" "pricing-engine-1" || exit 1
           wait_for "http://localhost:8080/" "nginx" || exit 1
+
+      - name: Check generated OpenAPI client is up to date
+        run: |
+          cd bpe-frontend
+          PRICING_ENGINE_OPENAPI_URL=http://localhost:8082/v3/api-docs npm run generate-client
+          if ! git diff --exit-code --quiet -- src/generated-client; then
+            echo "::error::src/generated-client is stale relative to pricing-engine-service's live OpenAPI spec."
+            echo "Run 'npm run generate-client' in bpe-frontend and commit the result."
+            git diff -- src/generated-client
+            exit 1
+          fi
 
       - name: Run Playwright E2E (against the real nginx-fronted stack)
         run: |
