@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "../AuthContext";
 import * as api from "../api";
+import { CompareControllerService } from "../generated-client";
 
 export default function ComparePage({ setView }) {
   const { user } = useAuth();
@@ -47,22 +48,25 @@ export default function ComparePage({ setView }) {
     setSearched(false);
     setActionType(null);
 
-    const params = { product: product.trim(), quantity, strategy };
-    if (maxDeliveryDays) params.maxDeliveryDays = maxDeliveryDays;
-    if (minRating) params.minRating = minRating;
-
-    const res = await api.compareOffers(params);
-    setSearched(true);
-    if (!res.ok) {
-      setStatus(`Error: request failed (${res.status})`);
-      return;
+    try {
+      const data = await CompareControllerService.compare(
+        product.trim(),
+        Number(quantity),
+        maxDeliveryDays ? Number(maxDeliveryDays) : undefined,
+        minRating ? Number(minRating) : undefined,
+        strategy
+      );
+      setSearched(true);
+      setOffers(data);
+      setStatus(
+        data.length === 0
+          ? "No offers match your criteria."
+          : `${data.length} offer(s) found. Best match highlighted.`
+      );
+    } catch (err) {
+      setSearched(true);
+      setStatus(`Error: request failed (${err.status})`);
     }
-    setOffers(res.data);
-    setStatus(
-      res.data.length === 0
-        ? "No offers match your criteria."
-        : `${res.data.length} offer(s) found. Best match highlighted.`
-    );
   }
 
   function unitPriceAt(offer, qty) {
