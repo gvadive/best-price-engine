@@ -24,8 +24,10 @@ export const logout = () => request("/auth/logout", { method: "POST" });
 export const searchProducts = (query) =>
   request(`/products?query=${encodeURIComponent(query)}`);
 
-export const compareOffers = (params) =>
-  request(`/compare?${new URLSearchParams(params).toString()}`);
+// /compare is served by pricing-engine-service, which publishes a live OpenAPI
+// spec -- use the generated client (src/generated-client) instead of a
+// hand-written call here, so a route/param drift fails typecheck/codegen
+// instead of surfacing as a runtime 404. See CompareControllerService.
 
 export const requestBulkPricing = (offerId, requestedQuantity) =>
   request("/bulk-pricing-requests", {
