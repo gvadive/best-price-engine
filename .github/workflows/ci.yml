@@ -5,6 +5,12 @@ on:
     branches: [develop]
   pull_request:
     branches: [develop]
+  workflow_dispatch:
+    inputs:
+      keep_ec2:
+        description: "Leave the smoke-test EC2 instance running instead of auto-terminating (terminate it yourself when done -- it costs money while up)"
+        type: boolean
+        default: false
 
 jobs:
   build-test:
@@ -108,7 +114,7 @@ jobs:
   # when adding the original EC2-hosting IAM policy.
   build-and-push:
     needs: build-test
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -156,7 +162,7 @@ jobs:
 
   ec2-smoketest:
     needs: build-and-push
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -170,7 +176,7 @@ jobs:
       - name: Ensure rsync is available
         run: sudo apt-get update && sudo apt-get install -y rsync
 
-      - name: Launch ephemeral EC2 instance, deploy, smoke-test, tear down
+      - name: Launch ephemeral EC2 instance, deploy, smoke-test, tear down (unless keep_ec2)
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -178,4 +184,9 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
-        run: bash infra/aws/deploy-ci-smoketest.sh
+        run: |
+          if [ "${{ github.event_name == 'workflow_dispatch' && inputs.keep_ec2 }}" = "true" ]; then
+            bash infra/aws/deploy-ci-smoketest.sh --keep
+          else
+            bash infra/aws/deploy-ci-smoketest.sh
+          fi
